@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/server_info.dart';
 import '../models/connection_state.dart' as model;
+import '../network/protocol/messages.dart';
 import '../network/websocket_client.dart';
 import '../network/udp_audio_receiver.dart';
 import '../audio/opus_decoder.dart';

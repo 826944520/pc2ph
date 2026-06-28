@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../state/audio_manager.dart';
@@ -241,7 +243,7 @@ class _VisualizerPainter extends CustomPainter {
 
     for (int i = 0; i < count; i++) {
       final phase = (progress + i * 0.2) % 1.0;
-      final height = 12 + 20 * (0.5 + 0.5 * (phase * 3.14159 * 2).sin);
+      final height = 12 + 20 * (0.5 + 0.5 * sin(phase * pi * 2));
       final x = centerX + (i - count / 2 + 0.5) * (barWidth + spacing);
       final y = (size.height - height) / 2;
 
