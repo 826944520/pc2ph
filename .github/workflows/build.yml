@@ -13,7 +13,7 @@ defaults:
 
 jobs:
   # ================================================
-  # Static Analysis + Tests (fast, runs on every push)
+  # Static Analysis + Tests
   # ================================================
   analyze:
     name: Analyze & Test
@@ -27,20 +27,20 @@ jobs:
           channel: 'stable'
 
       - name: Generate platform files
-        run: flutter create . --platforms=ios,android --org com.audiorelay --project-name audiorelay_client --force
+        run: flutter create . --platforms=android --org com.audiorelay --project-name audiorelay_client --force
 
       - name: Install dependencies
         run: flutter pub get
 
       - name: Static analysis
         continue-on-error: true
-        run: flutter analyze --no-fatal-infos
+        run: flutter analyze
 
       - name: Unit tests
         run: flutter test
 
   # ================================================
-  # iOS Build (requires macOS runner)
+  # iOS Build
   # ================================================
   build-ios:
     name: Build iOS
@@ -53,8 +53,8 @@ jobs:
           flutter-version: '3.22.0'
           channel: 'stable'
 
-      - name: Generate platform files
-        run: flutter create . --platforms=ios,android --org com.audiorelay --project-name audiorelay_client --force
+      - name: Generate iOS platform files
+        run: flutter create . --platforms=ios --org com.audiorelay --project-name audiorelay_client --force
 
       - name: Install dependencies
         run: flutter pub get
@@ -85,8 +85,8 @@ jobs:
           flutter-version: '3.22.0'
           channel: 'stable'
 
-      - name: Generate platform files
-        run: flutter create . --platforms=ios,android --org com.audiorelay --project-name audiorelay_client --force
+      - name: Generate Android platform files
+        run: flutter create . --platforms=android --org com.audiorelay --project-name audiorelay_client --force
 
       - name: Install dependencies
         run: flutter pub get
