@@ -52,7 +52,7 @@ jobs:
 
       - name: Generate iOS platform files (fresh)
         run: |
-          rm -f ios/Podfile
+          rm -rf ios/
           flutter create . --platforms=ios --org com.audiorelay --project-name audiorelay_client
 
       - name: Add opus-ios pod
