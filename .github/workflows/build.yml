@@ -50,18 +50,40 @@ jobs:
           flutter-version: '3.22.0'
           channel: 'stable'
 
-      - name: Generate iOS platform files (fresh)
+      - name: Generate iOS platform files
         run: |
-          rm -rf ios/
-          flutter create . --platforms=ios --org com.audiorelay --project-name audiorelay_client
+          mkdir -p ios/Runner
+          # Use FLUTTER_ROOT from flutter-action instead of parsing Generated.xcconfig
+          cat > ios/Podfile << 'PODFILE_EOF'
+          platform :ios, '14.0'
+          ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
-      - name: Add opus-ios pod
-        run: |
-          sed -i '' '/flutter_install_all_ios_pods/a\
-            \
-            \  # libopus for Opus audio decoding\
-            \  pod '"'"'opus-ios'"'"', '"'"'~> 1.1'"'"'
-          ' ios/Podfile
+          project 'Runner', {
+            'Debug' => :debug,
+            'Profile' => :release,
+            'Release' => :release,
+          }
+
+          flutter_root = ENV['FLUTTER_ROOT']
+          raise "FLUTTER_ROOT not set" unless flutter_root
+
+          require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+          flutter_ios_podhelper_setup
+
+          target 'Runner' do
+            use_frameworks!
+            use_modular_headers!
+            flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+            pod 'opus-ios', '~> 1.1'
+          end
+
+          post_install do |installer|
+            installer.pods_project.targets.each do |target|
+              flutter_additional_ios_build_settings(target)
+            end
+          end
+          PODFILE_EOF
 
       - name: Install dependencies
         run: flutter pub get
