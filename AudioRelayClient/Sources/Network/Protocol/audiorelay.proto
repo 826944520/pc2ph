@@ -1,0 +1,201 @@
+syntax = "proto3";
+
+package audiorelay;
+
+// ============================================================
+// AudioRelay Wire Protocol (reverse-engineered from v0.27.5)
+// ============================================================
+//
+// Transport:
+//   - Control: WebSocket (TCP) on server port (default ~59200)
+//   - Audio:   UDP on port 59100
+//
+// Message framing over WebSocket:
+//   Each message is prefixed with a 4-byte big-endian length.
+//   Messages are serialized with Protocol Buffers (lite runtime).
+//   Binary WebSocket frames are used.
+
+// --- Connection Setup ---
+
+message ConnectionConfig {
+    oneof config {
+        ClientConfig client_config = 1;
+        ServerConfig server_config = 2;
+    }
+    repeated string features = 3;
+}
+
+message ClientConfig {
+    string client_id = 1;
+    string client_version = 2;
+    string operating_system = 3;
+    string operating_system_version = 4;
+    PlayerFeatures player_features = 5;
+}
+
+message ServerConfig {
+    string server_id = 1;
+    string server_version = 2;
+    string server_name = 3;
+    ServerFeatures server_features = 4;
+    ServerAudioConfig audio_config = 5;
+}
+
+message ConfigExchangeResult {
+    ServerConfig server_config = 1;
+    repeated string features = 2;
+    ServerAudioConfig forced_options = 3;
+}
+
+// --- Feature Negotiation ---
+
+message PlayerFeatures {
+    CompressionFeature compression_feature = 1;
+    bool has_multi_payload_feature = 2;
+    bool has_message_feature = 3;
+    bool has_stream_data_feature = 4;
+    bool has_retransmission_feature = 5;
+    bool has_server_audio_config_feature = 6;
+}
+
+message ServerFeatures {
+    CompressionFeature compression_feature = 1;
+    bool multi_payload_feature = 2;
+    bool has_message_feature = 3;
+    bool has_stream_data_feature = 4;
+    bool has_server_audio_config_feature = 5;
+}
+
+message CompressionFeature {
+    int32 bitrate = 1;
+}
+
+message MultiPayloadFeature {
+    int32 max_elapsed_time_between_payloads = 1;
+    int32 max_payload_size = 2;
+}
+
+// --- Audio Configuration ---
+
+message ServerAudioConfig {
+    int32 sample_rate = 1;       // e.g. 48000
+    int32 channel_count = 2;     // e.g. 2
+    int32 bits_per_sample = 3;   // e.g. 16
+    int32 bitrate = 4;           // e.g. 96000
+    int32 buffer_ms = 5;         // e.g. 10
+    bool use_event_sync = 6;
+    bool play_silence_enabled = 7;
+}
+
+message ServerAudioConfigRequest {
+    int64 requested_tick = 1;
+}
+
+message ServerAudioConfigResponse {
+    ServerAudioConfig config = 1;
+}
+
+// --- Audio Data (sent over UDP) ---
+
+message StreamData {
+    int64 tick = 1;              // Monotonic frame counter
+    int64 timestamp_ms = 2;      // Capture timestamp
+    bytes audio_data = 3;        // Opus-encoded audio frame
+    bool is_retransmission = 4;
+    int32 sequence_number = 5;   // Packet sequence for loss detection
+}
+
+message MultiPayload {
+    int32 max_elapsed_time_between_payloads = 1;
+    int32 max_payload_size = 2;
+    repeated bytes payloads = 3;
+}
+
+// --- Keepalive ---
+
+message PingRequest {
+    int64 timestamp = 1;
+}
+
+message PingResponse {
+    string session = 1;
+    int64 request_timestamp = 2;
+}
+
+// --- Commands ---
+
+message StartCapture {
+    string device_id = 1;
+    ServerAudioConfig audio_config = 2;
+}
+
+message StopCapture {
+    string reason = 1;
+}
+
+message Stopping {
+    string stopping_reason = 1;
+    int64 elapsed_time_in_ms = 2;
+}
+
+// --- Statistics ---
+
+message NetworkMeasurements {
+    int64 bytes_received = 1;
+    repeated int64 latencies = 2;
+    int64 expected_packet_count = 3;
+    int64 packet_loss_count = 4;
+    bool has_out_of_order_packets = 5;
+}
+
+message RecentStats {
+    double max_latency = 1;
+    double average_packet_latency = 2;
+    double late_packet_percent = 3;
+    double packet_loss_percent = 4;
+    bool has_out_of_order_packets = 5;
+    int64 underflow_count = 6;
+}
+
+message Snapshot {
+    int64 discarded_amount_in_ms = 1;
+    repeated int64 latencies = 2;
+    int64 packet_loss_count = 3;
+    int64 expected_packet_count = 4;
+    bool has_out_of_order_packets = 5;
+    int64 underflow_count = 6;
+}
+
+// --- Device / Server Discovery ---
+
+message SourceDevices {
+    repeated string device_ids = 1;
+    string default_device_id = 2;
+}
+
+message DeviceInfo {
+    string id = 1;
+    string display_name = 2;
+    string description = 3;
+    bool is_default = 4;
+    bool is_selected = 5;
+}
+
+// --- Error Handling ---
+
+message CaptureError {
+    int32 h_result = 1;
+    string error_message = 2;
+}
+
+// --- Android Volume Control (may apply to iOS too) ---
+
+message ChangeAndroidVolume {
+    bool should_be_increased = 1;
+    bool should_mute = 2;
+}
+
+message DesktopVolume {
+    float volume = 1;
+    bool is_muted = 2;
+}

@@ -1,0 +1,107 @@
+name: Build iOS & Android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ================================================
+  # Static Analysis + Tests (fast, runs on every PR)
+  # ================================================
+  analyze:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+
+      - name: Generate platform files
+        run: flutter create . --platforms=ios,android --org com.audiorelay --project-name audiorelay_client --force
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Static analysis
+        run: flutter analyze --no-fatal-infos
+
+      - name: Unit tests
+        run: flutter test
+
+  # ================================================
+  # iOS Build (requires macOS runner)
+  # ================================================
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+    needs: analyze
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+
+      - name: Generate platform files
+        run: flutter create . --platforms=ios,android --org com.audiorelay --project-name audiorelay_client --force
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        run: cd ios && pod install && cd ..
+
+      - name: Build iOS (unsigned IPA)
+        run: flutter build ipa --no-codesign --release
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audiorelay-ios-unsigned
+          path: build/ios/ipa/*.ipa
+
+  # ================================================
+  # Android Build
+  # ================================================
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    needs: analyze
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+
+      - name: Generate platform files
+        run: flutter create . --platforms=ios,android --org com.audiorelay --project-name audiorelay_client --force
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      - name: Build Android App Bundle
+        run: flutter build appbundle --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audiorelay-android
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audiorelay-android-aab
+          path: build/app/outputs/bundle/release/app-release.aab

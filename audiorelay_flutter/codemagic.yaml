@@ -1,0 +1,87 @@
+# Codemagic CI/CD configuration for AudioRelay Flutter client
+# https://codemagic.io
+#
+# Free tier: 500 build minutes/month
+# iOS builds require: Apple Developer account ($99/year) OR free Apple ID (7-day cert)
+
+workflows:
+  # =============================================================
+  # iOS Build + TestFlight Auto-publish
+  # =============================================================
+  ios-build:
+    name: iOS Release Build
+    instance_type: mac_mini_m1
+    max_build_duration: 30
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Generate platform files (Windows dev workaround)
+        script: flutter create . --platforms=ios,android --org com.audiorelay --project-name audiorelay_client --force
+      - name: Install dependencies
+        script: flutter pub get
+      - name: Run static analysis
+        script: flutter analyze
+      - name: Run tests
+        script: flutter test
+      - name: Install CocoaPods
+        script: cd ios && pod install
+      - name: Build iOS (release)
+        script: flutter build ios --release --no-codesign
+    artifacts:
+      - build/ios/iphoneos/Runner.app
+      - build/ios/ipa/*.ipa
+    # Uncomment for automatic TestFlight publishing:
+    # publishing:
+    #   app_store_connect:
+    #     api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+    #     key_id: $APP_STORE_CONNECT_KEY_ID
+    #     issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+    #     submit_to_testflight: true
+
+  # =============================================================
+  # Android Build
+  # =============================================================
+  android-build:
+    name: Android Release Build
+    instance_type: linux_x2
+    max_build_duration: 20
+    environment:
+      flutter: stable
+    scripts:
+      - name: Generate platform files (Windows dev workaround)
+        script: flutter create . --platforms=ios,android --org com.audiorelay --project-name audiorelay_client --force
+      - name: Install dependencies
+        script: flutter pub get
+      - name: Run tests
+        script: flutter test
+      - name: Build APK
+        script: flutter build apk --release
+      - name: Build App Bundle (Google Play)
+        script: flutter build appbundle --release
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/bundle/release/app-release.aab
+
+  # =============================================================
+  # PR Check: analyze + test only (fast, no build)
+  # =============================================================
+  pr-check:
+    name: Pull Request Check
+    instance_type: linux_x2
+    max_build_duration: 10
+    environment:
+      flutter: stable
+    scripts:
+      - name: Generate platform files (Windows dev workaround)
+        script: flutter create . --platforms=ios,android --org com.audiorelay --project-name audiorelay_client --force
+      - name: Install dependencies
+        script: flutter pub get
+      - name: Static analysis
+        script: flutter analyze
+      - name: Unit tests
+        script: flutter test
+    triggering:
+      events:
+        - pull_request
